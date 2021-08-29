@@ -9,8 +9,8 @@ pub struct Pool {
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 enum Message {
-    Job(Job),
-    Terminate,
+    Work(Job),
+    Stop,
 }
 
 impl Pool {
@@ -22,7 +22,7 @@ impl Pool {
         let receiver = Arc::new(Mutex::new(receiver));
         let mut workers = Vec::with_capacity(size);
         for _ in 0..size {
-            workers.push(Worker::new(Arc::clone(&receiver)))
+            workers.push(Worker::new(Arc::clone(&receiver)));
         }
 
         Pool { workers, sender }
@@ -31,14 +31,14 @@ impl Pool {
     pub fn execute<F>(&self, f: F)
         where F: FnOnce() + Send + 'static
     {
-        self.sender.send(Message::Job(Box::new(f))).unwrap();
+        self.sender.send(Message::Work(Box::new(f))).unwrap();
     }
 }
 
 impl Drop for Pool {
     fn drop(&mut self) {
         for _ in &self.workers {
-            self.sender.send(Message::Terminate).unwrap();
+            self.sender.send(Message::Stop).unwrap();
         }
 
         for worker in &mut self.workers {
@@ -55,18 +55,20 @@ struct Worker {
 
 impl Worker {
     fn new(receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Self {
-        let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv().unwrap();
+        let thread = thread::spawn(move ||
+            loop {
+                let message = receiver.lock().unwrap().recv().unwrap();
 
-            match message {
-                Message::Job(job) => {
-                    job();
-                }
-                Message::Terminate => {
-                    break;
+                match message {
+                    Message::Work(job) => {
+                        job();
+                    }
+                    Message::Stop => {
+                        break;
+                    }
                 }
             }
-        });
+        );
 
         Worker { thread: Some(thread) }
     }
