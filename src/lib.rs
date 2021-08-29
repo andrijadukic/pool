@@ -14,7 +14,7 @@ enum Message {
 }
 
 impl ThreadPool {
-    fn new(size: usize) -> Self {
+    pub fn new(size: usize) -> Self {
         assert!(size > 0);
 
         let (sender, receiver) = mpsc::channel();
