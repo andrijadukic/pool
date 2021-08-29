@@ -1,7 +1,7 @@
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
-pub struct ThreadPool {
+pub struct Pool {
     workers: Vec<Worker>,
     sender: mpsc::Sender<Message>,
 }
@@ -13,7 +13,7 @@ enum Message {
     Terminate,
 }
 
-impl ThreadPool {
+impl Pool {
     pub fn new(size: usize) -> Self {
         assert!(size > 0);
 
@@ -25,7 +25,7 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)))
         }
 
-        ThreadPool { workers, sender }
+        Pool { workers, sender }
     }
 
     pub fn execute<F>(&self, f: F)
@@ -35,7 +35,7 @@ impl ThreadPool {
     }
 }
 
-impl Drop for ThreadPool {
+impl Drop for Pool {
     fn drop(&mut self) {
         for _ in &self.workers {
             self.sender.send(Message::Terminate).unwrap();
