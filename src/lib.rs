@@ -21,8 +21,8 @@ impl Pool {
 
         let receiver = Arc::new(Mutex::new(receiver));
         let mut workers = Vec::with_capacity(size);
-        for id in 0..size {
-            workers.push(Worker::new(id, Arc::clone(&receiver)))
+        for _ in 0..size {
+            workers.push(Worker::new(Arc::clone(&receiver)))
         }
 
         Pool { workers, sender }
@@ -50,12 +50,11 @@ impl Drop for Pool {
 }
 
 struct Worker {
-    id: usize,
     thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Self {
+    fn new(receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Self {
         let thread = thread::spawn(move || loop {
             let message = receiver.lock().unwrap().recv().unwrap();
 
@@ -69,6 +68,6 @@ impl Worker {
             }
         });
 
-        Worker { id, thread: Some(thread) }
+        Worker { thread: Some(thread) }
     }
 }
